@@ -1,0 +1,123 @@
+// DevAcademy - Prisma Schema for TiDB Cloud (MySQL-compatible)
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+model User {
+  id           String         @id @default(uuid())
+  email        String         @unique
+  name         String?
+  role         Role           @default(STUDENT)
+  progress     UserProgress[]
+  aiChats      AiChatLog[]
+  bookmarks    Bookmark[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+}
+
+model Course {
+  id          String     @id @default(uuid())
+  slug        String     @unique
+  title       String
+  description String
+  category    String     @default("Web Development")
+  icon        String     @default("Code")
+  badge       String     @default("Popular")
+  lessonsCount Int       @default(0)
+  lessons     Lesson[]
+  quizzes     Quiz[]
+  exercises   Exercise[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Lesson {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  description String
+  courseSlug  String
+  course      Course   @relation(fields: [courseSlug], references: [slug], onDelete: Cascade)
+  order       Int      @default(1)
+  content     String   @db.Text
+  starterCode String?  @db.Text
+  language    String   @default("html")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseSlug])
+}
+
+model Quiz {
+  id          String   @id @default(uuid())
+  slug        String   @unique
+  title       String
+  courseSlug  String
+  course      Course   @relation(fields: [courseSlug], references: [slug], onDelete: Cascade)
+  questions   Json     // Array of { id, question, options: string[], answer: number, explanation: string }
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Exercise {
+  id             String   @id @default(uuid())
+  slug           String   @unique
+  title          String
+  courseSlug     String
+  course         Course   @relation(fields: [courseSlug], references: [slug], onDelete: Cascade)
+  instructions   String   @db.Text
+  starterCode    String   @db.Text
+  solutionCode   String   @db.Text
+  hint           String?
+  difficulty     String   @default("Beginner")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model UserProgress {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonSlug String
+  completed  Boolean  @default(false)
+  quizScore  Int?
+  updatedAt  DateTime @updatedAt
+
+  @@unique([userId, lessonSlug])
+}
+
+model Bookmark {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonSlug String
+  title      String
+  courseSlug String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, lessonSlug])
+}
+
+model AiChatLog {
+  id          String   @id @default(uuid())
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  lessonSlug  String?
+  prompt      String   @db.Text
+  response    String   @db.Text
+  mode        String   @default("chat") // 'chat' | 'explain' | 'hint' | 'debug'
+  model       String   @default("gpt-4o-mini")
+  tokensUsed  Int?
+  createdAt   DateTime @default(now())
+}

@@ -1,0 +1,113 @@
+{
+  "title": "Pilih arah SyntaxLab berikutnya",
+  "question": "Arah ini memakai bentuk visual baru yang tidak muncul di dua putaran sebelumnya. Kunci kartu utama, alternatif, atau standar kategori.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Logic-Grid Study Sheet",
+      "kicker": "THE ROLL",
+      "lineage": "Numbered puzzle-magazine grids and answer-key cross-references",
+      "thesis": "Let learners scan a clean lesson grid, then open the exact explanation, example or exercise they need.",
+      "palette": [
+        "#f1ede4",
+        "#183b62",
+        "#c43f33",
+        "#c4d2c8"
+      ],
+      "materials": [
+        "numbered grid cells",
+        "inked cross-reference marks",
+        "ruled answer margins"
+      ],
+      "viewport": "The first screen is a measured HTML study sheet: a narrow course index on the left, a 3-row-by-3-column lesson grid in the center with columns Konsep, Contoh, Coba, and an open current lesson on the right. The selected cell is “Pengenalan HTML / Konsep”; choosing Contoh opens the real starter code and browser preview, while Coba opens the existing exercises route. No solved/completed marks are implied.",
+      "risk": "A puzzle grid can make ordinary lessons feel like a quiz; every cell must open real course content and the reading panel must remain primary.",
+      "raised": [
+        {
+          "from": "challenger-emigre-bitmap-specimen",
+          "raise": "Small code, labels and supporting explanations retain crisp pixel-level reproduction at their actual reading sizes; the grid never trades clarity for display type."
+        },
+        {
+          "from": "challenger-pop-culture-shelf-doujin-event-catalog",
+          "raise": "Topic tiles remain atomic and link directly to the matching lesson, while a whole-cell grid reflows without broken indices."
+        },
+        {
+          "from": "challenger-operate-c-emission-line-rail",
+          "raise": "Selected, unavailable and current states use explicit shape and position as well as ink color, so state never depends on hue alone."
+        }
+      ],
+      "comp": "http://127.0.0.1:65301/r2-01.png"
+    },
+    {
+      "id": "model-pick",
+      "label": "Chalkboard Lesson Studio",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "A classroom chalkboard with ruled diagrams and worked examples",
+      "thesis": "Show one concept as a clear lesson diagram, then let the learner work through a matching example.",
+      "palette": [
+        "#143b32",
+        "#f4efdf",
+        "#e1c84a"
+      ],
+      "materials": [
+        "deep green board",
+        "chalk line diagrams",
+        "warm paper exercise slips"
+      ],
+      "viewport": "A large dark-green writing field presents one real HTML concept with a simple chalk structural diagram, a short explanation and a small editor/preview pair. A slim paper lesson list remains available at the side; a primary Coba example action leads directly to the playground.",
+      "risk": "A chalkboard is a familiar teaching image and can feel generic unless the example-to-preview interaction owns the screen.",
+      "comp": "http://127.0.0.1:65301/r2-02.png"
+    },
+    {
+      "id": "challenger-wayfinding-cartography-signage-terminal-yellow-wayfinding",
+      "label": "Course Wayfinding Bands",
+      "verdict": "wins",
+      "lineage": "Airport decision-point signage and persistent route bands",
+      "thesis": "Tell the learner where they are, what they can study next and the shortest route to it.",
+      "palette": [
+        "#f2cd27",
+        "#121716",
+        "#f7f4e9"
+      ],
+      "materials": [
+        "signal-yellow course bands",
+        "humanist black labels",
+        "edge-anchored direction arrows"
+      ],
+      "viewport": "A compact strip at the top names the active route HTML; below, one lesson panel says “Pengenalan HTML” and a route band lists the next two actual HTML lessons. A second panel pairs a readable explanation with an HTML example and browser preview. One saturated yellow action says “Lanjutkan” and points to the actual next lesson.",
+      "case": "It beats the assigned grid on immediate audience recognition and route clarity: navigation is explicit, and the next learnable step is unmistakable.",
+      "risk": "Too many directional bands can compete with long explanations; signs should show only the current choice and the next lesson.",
+      "comp": "http://127.0.0.1:65301/r2-03.png",
+      "hero": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-terminal-yellow-wayfinding-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/wayfinding-cartography-signage-terminal-yellow-wayfinding.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "A clear learning SaaS with a course catalog, a focused lesson view and an accessible live editor.",
+    "palette": [
+      "#ffffff",
+      "#111827",
+      "#2563eb"
+    ],
+    "materials": [
+      "neutral interface",
+      "course cards",
+      "standard editor panels"
+    ],
+    "viewport": "A familiar navigation bar, plain-language “Belajar coding dari dasar” introduction, real course counts, and lesson pages with content beside code and preview.",
+    "risk": "Efficient and recognizable, but intentionally familiar to the category.",
+    "comp": "http://127.0.0.1:65301/r2-04.png"
+  },
+  "steer": true
+}

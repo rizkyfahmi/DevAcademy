@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="48" height="40" viewBox="0 0 48 40" fill="none">
+  <!-- Empty placeholder logo image box -->
+  <rect x="2" y="2" width="44" height="36" rx="6" stroke="#04AA6D" stroke-width="2" stroke-dasharray="3 3" fill="#f8fafc" />
+  <path d="M16 26L22 18L26 22L32 14L36 26H16Z" fill="#cbd5e1" />
+  <circle cx="21" cy="14" r="3" fill="#cbd5e1" />
+</svg>

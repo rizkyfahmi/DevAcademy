@@ -1,0 +1,219 @@
+{
+  "title": "Pilih dunia visual SyntaxLab",
+  "question": "Kunci arah visual untuk frontend baru: pilih arah yang ditugaskan, salah satu alternatif, atau minta putaran baru. Pilihan ini mengunci visual brief sebelum implementasi.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Workshop Field Manual",
+      "kicker": "THE ROLL",
+      "lineage": "Exploded-view assembly sheets and workshop instruction manuals",
+      "thesis": "Belajar terasa seperti merakit keterampilan: setiap konsep menunjukkan bagian, hubungan, dan langkah yang bisa langsung dicoba.",
+      "palette": [
+        "#f5f2e9",
+        "#182823",
+        "#bddc42",
+        "#546b61"
+      ],
+      "materials": [
+        "technical drawing grid",
+        "inked callouts",
+        "component diagrams"
+      ],
+      "viewport": "Landing page opens as a working lesson bench: course path at left, a large HTML example and live preview side by side, then a numbered first exercise below. The primary action sits on the active lesson sheet.",
+      "risk": "Can feel too mechanical if callouts dominate the lesson text; diagrams must clarify structure, never decorate it.",
+      "raised": [
+        {
+          "from": "challenger-crouwel-grid-specimen",
+          "raise": "Grid density becomes structural: each panel, callout and code row aligns to one measured unit, with the construction grid visible only where it helps read the example."
+        },
+        {
+          "from": "challenger-labanotation",
+          "raise": "Progression becomes exact and legible: every lesson step has a numbered place and a clear previous/next path."
+        },
+        {
+          "from": "challenger-monochrome-product-marketing",
+          "raise": "Every learning promise is paired with a real interface demonstration: the lesson preview, runnable code, or exercise itself."
+        }
+      ],
+      "comp": "http://127.0.0.1:65301/assigned.png",
+      "hero": "https://impeccable.style/worlds/cards/technical-illustration-exploded-view-hero.webp"
+    },
+    {
+      "id": "model-pick",
+      "label": "Browser Workshop Bench",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "The browser’s developer-tools and live-preview workspace",
+      "thesis": "The fastest route from curiosity to understanding is to change a line and see the page respond.",
+      "palette": [
+        "#101714",
+        "#dce6dc",
+        "#b9dc43",
+        "#64756c"
+      ],
+      "materials": [
+        "editor panes",
+        "live DOM preview",
+        "precise monospace labels"
+      ],
+      "viewport": "A full working canvas leads with a short lesson prompt, editable code and rendered result in one balanced three-part view; related practice waits below the fold.",
+      "risk": "A familiar editor-first interface can make the learning sequence feel secondary.",
+      "comp": "http://127.0.0.1:65301/model-pick.png"
+    },
+    {
+      "id": "challenger-rw-manual-acetate-tab-board",
+      "label": "Tabbed Acetate Manual",
+      "verdict": "wins",
+      "lineage": "Section-tabbed technical manuals with clear acetate overlays",
+      "thesis": "A lesson is a transparent layer: see its place in the course, then focus on one concept at a time.",
+      "palette": [
+        "#f5f1e7",
+        "#18342c",
+        "#e0c532",
+        "#347f78"
+      ],
+      "materials": [
+        "translucent lesson layers",
+        "full-strength section tabs",
+        "punched code callouts"
+      ],
+      "viewport": "A stepped course tab rail frames a clear lesson sheet; explanation and code sit on a single page with the active section colored and the exercise punched as the next step.",
+      "case": "Strong identification with self-study manuals and the clearest course-to-lesson hierarchy; the tactile layers become functional wayfinding.",
+      "risk": "Layer transparency can lower contrast or become a visual trick; keep reading surfaces fully legible.",
+      "comp": "http://127.0.0.1:65301/challenger-rw-manual-acetate-tab-board.webp",
+      "hero": "https://impeccable.style/worlds/cards/rw-manual-acetate-tab-board-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/rw-manual-acetate-tab-board.webp"
+    },
+    {
+      "id": "challenger-broadcast-teletext-service",
+      "label": "Indexed Learning Signal",
+      "verdict": "competitive",
+      "lineage": "Numbered broadcast teletext service indexes",
+      "thesis": "Turn the course catalog into a crisp index that gets learners to the next relevant page quickly.",
+      "palette": [
+        "#101714",
+        "#b9dc43",
+        "#f1f1e7",
+        "#5f6f67"
+      ],
+      "materials": [
+        "numbered index rows",
+        "strong typographic code labels",
+        "hard grid divisions"
+      ],
+      "viewport": "A compact course index labels each route and active step, paired with a large featured lesson preview and one visible continue action.",
+      "case": "Raises scanability and route clarity, but the vintage broadcast grammar identifies less strongly with today's self-taught beginner.",
+      "risk": "Can read as retro novelty if the typographic index overwhelms lesson content.",
+      "comp": "http://127.0.0.1:65301/challenger-broadcast-teletext-service.png",
+      "hero": "https://impeccable.style/worlds/cards/broadcast-programming-teletext-service-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/broadcast-programming-teletext-service.png"
+    },
+    {
+      "id": "challenger-streaming-title-card-wall",
+      "label": "Course Shelf",
+      "verdict": "competitive",
+      "lineage": "Streaming-service title-card shelves",
+      "thesis": "Let learners browse topics visually and reveal useful context when they focus a course.",
+      "palette": [
+        "#101714",
+        "#e5e9df",
+        "#b9dc43",
+        "#46554d"
+      ],
+      "materials": [
+        "horizontal course rails",
+        "lesson thumbnails",
+        "focus-revealed metadata"
+      ],
+      "viewport": "One featured course takes the lead above compact horizontal course rails; keyboard or pointer focus expands a tile to reveal the course goal and first lesson.",
+      "case": "Recognizable and easy to browse, but the discovery wall makes an ongoing learning task less direct than a manual or workbench.",
+      "risk": "May encourage browsing instead of continuing a learning session.",
+      "comp": "http://127.0.0.1:65301/challenger-streaming-title-card-wall.png",
+      "hero": "https://impeccable.style/worlds/cards/pop-culture-shelf-streaming-title-card-wall-hero.webp",
+      "board": "https://impeccable.style/worlds/cards/pop-culture-shelf-streaming-title-card-wall.png"
+    },
+    {
+      "id": "challenger-variable-font-specimen",
+      "label": "Variable Specimen",
+      "verdict": "declined",
+      "lineage": "Interactive variable-font specimen sheets",
+      "palette": [
+        "#f5f2e9",
+        "#182823",
+        "#bddc42"
+      ],
+      "materials": [
+        "glyph grid",
+        "live axis slider"
+      ],
+      "case": "A specimen is less recognizable to a programming beginner and puts type exploration ahead of learning concepts.",
+      "kept": "Keep the source's immediate feedback discipline: every code edit should produce an understandable visible result.",
+      "hero": "https://impeccable.style/worlds/cards/variable-font-specimen-hero.webp"
+    },
+    {
+      "id": "challenger-labanotation",
+      "label": "Labanotation Score",
+      "verdict": "declined",
+      "lineage": "Labanotation movement scores",
+      "palette": [
+        "#f5f2e9",
+        "#182823",
+        "#546b61"
+      ],
+      "materials": [
+        "vertical staff",
+        "directional marks",
+        "timed sequence"
+      ],
+      "case": "Its movement notation is unfamiliar for this audience and does not clarify code or course structure.",
+      "kept": "Use its exact sequencing discipline in lesson order, active-step state, and previous/next navigation.",
+      "hero": "https://impeccable.style/worlds/cards/notation-diagram-systems-labanotation-hero.webp"
+    },
+    {
+      "id": "challenger-monochrome-product-marketing",
+      "label": "Claim and Proof",
+      "verdict": "declined",
+      "lineage": "Monochrome product editorial pages",
+      "palette": [
+        "#f5f2e9",
+        "#182823",
+        "#bddc42"
+      ],
+      "materials": [
+        "neutral hierarchy",
+        "paired interface proofs"
+      ],
+      "case": "The marketing claim sequence is built for persuasion rather than the learner's recurring work.",
+      "kept": "Pair product statements with real lesson or editor evidence; do not rely on unsupported claims.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-monochrome-product-marketing-hero.webp"
+    }
+  ],
+  "reroll": {
+    "registers": [
+      "safer",
+      "bolder"
+    ]
+  },
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "A familiar learning SaaS interface with a clear course catalog, focused lesson pages and an accessible editor.",
+    "palette": [
+      "#ffffff",
+      "#111827",
+      "#2563eb"
+    ],
+    "materials": [
+      "clean neutral interface",
+      "course cards",
+      "standard code editor"
+    ],
+    "viewport": "A conventional homepage hero and course-card grid with a clear start-learning action; lessons use standard content-plus-sidebar layout.",
+    "risk": "Familiar and efficient, but visually interchangeable with other learning products by design.",
+    "comp": "http://127.0.0.1:65301/canon.png"
+  },
+  "steer": true
+}

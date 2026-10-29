@@ -1,0 +1,31 @@
+{
+  "name": "devacademy",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DevAcademy Fullstack Platform with Next.js, NestJS, Prisma, PostgreSQL, & OpenAI",
+  "scripts": {
+    "dev": "npm run dev --prefix frontend",
+    "start": "npm run dev --prefix frontend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "dev:backend": "npm run start:dev --prefix backend",
+    "build:frontend": "npm run build --prefix frontend",
+    "build:backend": "npm run build --prefix backend",
+    "build": "npm run build:backend && npm run build:frontend",
+    "lint:frontend": "npm run lint --prefix frontend",
+    "prisma:generate": "npx prisma generate --schema=backend/prisma/schema.prisma",
+    "prisma:migrate": "npx prisma migrate dev --schema=backend/prisma/schema.prisma",
+    "prisma:studio": "npx prisma studio --schema=backend/prisma/schema.prisma"
+  },
+  "keywords": [
+    "nextjs",
+    "nestjs",
+    "typescript",
+    "tailwindcss",
+    "shadcn-ui",
+    "prisma",
+    "postgresql",
+    "openai"
+  ],
+  "author": "",
+  "license": "ISC"
+}

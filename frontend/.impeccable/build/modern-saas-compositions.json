@@ -1,0 +1,71 @@
+{
+  "title": "Pilih susunan utama SyntaxLab",
+  "question": "Ketiganya mengikuti arah SaaS modern yang kamu pilih. Pilih struktur yang ingin dipakai sebagai dasar seluruh frontend.",
+  "options": [
+    {
+      "id": "course-overview",
+      "label": "Katalog Belajar Terarah",
+      "kicker": "COMP 01",
+      "lineage": "Course overview built around the first useful action",
+      "thesis": "Tampilkan pilihan belajar secara ringkas, lalu arahkan pemula langsung ke pelajaran HTML pertama.",
+      "palette": [
+        "#f7f6f2",
+        "#202833",
+        "#3b5ccc"
+      ],
+      "materials": [
+        "warm neutral canvas",
+        "precise course rows",
+        "cobalt action"
+      ],
+      "viewport": "Sidebar ringkas menampung Belajar, Latihan, Playground, dan AI Tutor. Konten utama membuka dengan “Mulai dari dasar”, menonjolkan kursus HTML beserta tiga pelajaran yang benar-benar tersedia, dan tombol Mulai belajar. CSS, JavaScript, dan Python tetap terlihat sebagai pilihan lanjutan tanpa metrik kemajuan buatan.",
+      "risk": "Katalog dapat menggeser fokus ke penjelajahan; kursus HTML dan aksi mulai harus tetap paling jelas.",
+      "comp": "http://127.0.0.1:65301/modern-01.png"
+    },
+    {
+      "id": "lesson-workspace",
+      "label": "Ruang Belajar Fokus",
+      "kicker": "COMP 02",
+      "lineage": "Focused reading desk with an adjacent working example",
+      "thesis": "Satukan penjelasan singkat, urutan kursus, dan contoh yang bisa dicoba dalam satu ruang belajar.",
+      "palette": [
+        "#f7f6f2",
+        "#202833",
+        "#3b5ccc"
+      ],
+      "materials": [
+        "reading column",
+        "lesson index",
+        "editor and browser preview"
+      ],
+      "viewport": "Halaman Pengenalan HTML memakai sidebar urutan tiga pelajaran, kolom penjelasan yang mudah dibaca, diagram struktur HTML, serta editor dan preview berdampingan. Aksi Coba di Playground membuka alat yang sudah ada.",
+      "risk": "Kolom contoh dapat menyempitkan bacaan di layar kecil; pada ponsel susun bacaan, editor, lalu preview secara berurutan.",
+      "comp": "http://127.0.0.1:65301/modern-02.png"
+    },
+    {
+      "id": "course-route",
+      "label": "Peta Langkah Kursus",
+      "kicker": "COMP 03",
+      "lineage": "Persistent wayfinding strip for lesson sequence",
+      "thesis": "Jaga posisi pelajaran dan langkah berikutnya terlihat tanpa menutupi isi belajar.",
+      "palette": [
+        "#f7f6f2",
+        "#202833",
+        "#e4bd22"
+      ],
+      "materials": [
+        "course route band",
+        "upright lesson text",
+        "single signal action"
+      ],
+      "viewport": "Jalur HTML di atas pelajaran menunjukkan Pengenalan HTML, Elemen dan Tag, lalu Formulir dan Input. Penjelasan, contoh kode, dan preview berada di bawahnya; satu tombol membawa ke pelajaran berikutnya yang nyata.",
+      "risk": "Terlalu banyak penanda arah bersaing dengan bacaan; tampilkan pelajaran aktif dan satu langkah berikutnya saja.",
+      "comp": "http://127.0.0.1:65301/modern-03.png"
+    }
+  ],
+  "buildPath": {
+    "value": "comp",
+    "toggle": true
+  },
+  "steer": true
+}
