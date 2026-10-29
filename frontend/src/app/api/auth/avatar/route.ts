@@ -7,7 +7,6 @@ const DEFAULT_AVATAR_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0
   <path d="M 20 85 C 20 65, 35 60, 50 60 C 65 60, 80 65, 80 85 Z" fill="#94a3b8"/>
 </svg>`;
 
-export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   try {

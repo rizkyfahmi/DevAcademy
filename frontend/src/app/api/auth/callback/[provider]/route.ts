@@ -26,6 +26,7 @@ export async function GET(
 ) {
   const { provider } = await params;
   const origin = getAppOrigin(req);
+  const url = req.nextUrl;
 
   const code = url.searchParams.get("code");
   const error = url.searchParams.get("error");

@@ -72,10 +72,11 @@ let dbInstance: DatabaseSync | null = null;
 export function getDb(): DatabaseSync {
   if (dbInstance) return dbInstance;
 
-  // Store database file in hidden .data directory to prevent Tailwind/Turbopack file scanner lock collisions
+  // Store database file in hidden .data directory locally, or /tmp on Vercel/Serverless
   const cwd = process.cwd();
   const frontendDir = cwd.endsWith("frontend") ? cwd : path.resolve(cwd, "frontend");
-  const dbDir = path.resolve(frontendDir, ".data");
+  const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const dbDir = isServerless ? "/tmp" : path.resolve(frontendDir, ".data");
   if (!fs.existsSync(dbDir)) {
     fs.mkdirSync(dbDir, { recursive: true });
   }
