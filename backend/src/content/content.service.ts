@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   SYNTAXLAB_COURSES,
@@ -12,9 +12,31 @@ import {
 
 @Injectable()
 export class ContentService {
+  private readonly logger = new Logger(ContentService.name);
+
   constructor(private readonly prisma: PrismaService) {}
 
   async getAllCourses(): Promise<Omit<CourseData, 'lessons'>[]> {
+    try {
+      const dbCourses = await this.prisma.course.findMany({
+        include: { lessons: { select: { id: true } } },
+      });
+
+      if (dbCourses && dbCourses.length > 0) {
+        return dbCourses.map((c) => ({
+          slug: c.slug,
+          title: c.title,
+          description: c.description,
+          category: c.category,
+          icon: c.icon,
+          badge: c.badge,
+          lessonsCount: c.lessons.length,
+        }));
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not read courses from TiDB Cloud: ${err.message}. Using fallback data.`);
+    }
+
     return SYNTAXLAB_COURSES.map((course) => ({
       slug: course.slug,
       title: course.title,
@@ -27,6 +49,35 @@ export class ContentService {
   }
 
   async getCourseBySlug(slug: string): Promise<CourseData> {
+    try {
+      const dbCourse = await this.prisma.course.findUnique({
+        where: { slug },
+        include: { lessons: { orderBy: { order: 'asc' } } },
+      });
+
+      if (dbCourse) {
+        return {
+          slug: dbCourse.slug,
+          title: dbCourse.title,
+          description: dbCourse.description,
+          category: dbCourse.category,
+          icon: dbCourse.icon,
+          badge: dbCourse.badge,
+          lessons: dbCourse.lessons.map((l) => ({
+            slug: l.slug,
+            title: l.title,
+            description: l.description,
+            order: l.order,
+            language: l.language,
+            starterCode: l.starterCode || '',
+            content: l.content,
+          })),
+        };
+      }
+    } catch (err: any) {
+      this.logger.warn(`Could not fetch course '${slug}' from TiDB Cloud: ${err.message}`);
+    }
+
     const course = SYNTAXLAB_COURSES.find((c) => c.slug === slug);
     if (!course) {
       throw new NotFoundException(`Course '${slug}' not found`);
