@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import { ContentService } from './content.service';
 
 @Controller('api')
@@ -46,5 +46,25 @@ export class ContentController {
   @Get('search')
   search(@Query('q') q: string) {
     return this.contentService.searchContent(q);
+  }
+
+  @Get('sync')
+  getUserSync(@Query('email') email: string) {
+    return this.contentService.getUserSync(email);
+  }
+
+  @Post('sync')
+  saveUserSync(
+    @Body()
+    body: {
+      email: string;
+      userId?: string;
+      name?: string;
+      avatarUrl?: string;
+      state: Record<string, any>;
+      overwrite?: boolean;
+    },
+  ) {
+    return this.contentService.saveUserSync(body);
   }
 }

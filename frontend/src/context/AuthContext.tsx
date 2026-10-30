@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { syncWithTiDBCloud } from "@/lib/user-progress-store";
 
 export interface User {
   id: string;
@@ -68,11 +69,35 @@ function bufferToBase64Url(buffer: ArrayBuffer): string {
   return window.btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+const ACTIVE_USER_KEY = "devacademy_active_user";
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const cached = localStorage.getItem(ACTIVE_USER_KEY);
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [providers, setProviders] = useState<Record<string, ProviderStatus>>({});
   const router = useRouter();
+
+  const persistActiveUser = useCallback((nextUser: User | null) => {
+    setUser(nextUser);
+    if (typeof window !== "undefined") {
+      try {
+        if (nextUser) {
+          localStorage.setItem(ACTIVE_USER_KEY, JSON.stringify(nextUser));
+          syncWithTiDBCloud(nextUser).catch(() => {});
+        } else {
+          localStorage.removeItem(ACTIVE_USER_KEY);
+        }
+      } catch {}
+    }
+  }, []);
 
   // 1. Fetch current session on mount
   const refreshUser = useCallback(async () => {
@@ -80,13 +105,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch("/api/auth/me", { cache: "no-store" });
       const data = await res.json();
       if (data.authenticated && data.user) {
-        setUser(data.user);
+        persistActiveUser(data.user);
       } else {
-        setUser(null);
+        persistActiveUser(null);
       }
     } catch (err) {
       console.warn("[AuthContext] Failed to check user session:", err);
-      setUser(null);
+      persistActiveUser(null);
     } finally {
       setLoading(false);
     }
@@ -124,7 +149,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: data.error || "Login failed. Please try again." };
       }
 
-      setUser(data.user);
+      persistActiveUser(data.user);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || "Network error. Please try again." };
@@ -151,7 +176,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: resData.error || "Registration failed." };
       }
 
-      setUser(resData.user);
+      persistActiveUser(resData.user);
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message || "Network error. Please try again." };
@@ -165,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       console.error("[Logout Error]:", err);
     } finally {
-      setUser(null);
+      persistActiveUser(null);
       router.push("/");
       router.refresh();
     }

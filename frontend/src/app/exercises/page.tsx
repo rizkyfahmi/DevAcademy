@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
-import { Search, ArrowRight, Code2, Layers } from "lucide-react";
+import { Search, ArrowRight, Code2, Layers, CheckCircle2 } from "lucide-react";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { DarkFooter } from "@/components/landing/DarkFooter";
+import { useAuth } from "@/context/AuthContext";
+import { getFullExerciseProgress } from "@/lib/user-progress-store";
+import { normalizeTechKey } from "@/lib/w3-all-courses-catalog";
 
 interface ExerciseCardItem {
   id: string;
@@ -16,8 +19,30 @@ interface ExerciseCardItem {
 }
 
 export default function ExercisesPage() {
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [answeredCountMap, setAnsweredCountMap] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const computeProgress = () => {
+      const next: Record<string, number> = {};
+      for (const item of exerciseItems) {
+        const norm = normalizeTechKey(item.slug);
+        const saved = getFullExerciseProgress(user?.email, norm);
+        if (saved && saved.submittedMap) {
+          const count = Object.values(saved.submittedMap).filter(Boolean).length;
+          if (count > 0) {
+            next[item.slug] = count;
+          }
+        }
+      }
+      setAnsweredCountMap(next);
+    };
+    computeProgress();
+    window.addEventListener("devacademy-cloud-synced", computeProgress);
+    return () => window.removeEventListener("devacademy-cloud-synced", computeProgress);
+  }, [user?.email]);
 
   const exerciseItems: ExerciseCardItem[] = [
     {
@@ -726,8 +751,29 @@ export default function ExercisesPage() {
               <h2 className="w3-exercise-card-title">{item.name}</h2>
               <p className="w3-exercise-card-subtitle">{item.desc}</p>
 
+              {answeredCountMap[item.slug] ? (
+                <div
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    color: "#04aa6d",
+                    background: "rgba(4, 170, 109, 0.12)",
+                    border: "1px solid rgba(4, 170, 109, 0.3)",
+                    padding: "3px 10px",
+                    borderRadius: 12,
+                    marginBottom: 8,
+                  }}
+                >
+                  <CheckCircle2 style={{ width: 12, height: 12 }} />
+                  <span>{answeredCountMap[item.slug]} Soal Dijawab</span>
+                </div>
+              ) : null}
+
               <div className="w3-exercise-card-cta">
-                <span>Buka Soal Latihan</span>
+                <span>{answeredCountMap[item.slug] ? "Lanjutkan Latihan" : "Buka Soal Latihan"}</span>
                 <ArrowRight style={{ width: 12, height: 12 }} />
               </div>
             </Link>

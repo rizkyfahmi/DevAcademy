@@ -6,6 +6,10 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { Search, X, ArrowRight, Trash2 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import {
+  getLocalSearchHistory,
+  saveLocalSearchHistory,
+} from "@/lib/user-progress-store";
 import { SLUG_TO_TECH_MAP, TECH_TO_SLUG_MAP } from "@/lib/w3-all-courses-catalog";
 import { ALL_HTML_CHAPTERS } from "@/lib/w3-html-chapters-data";
 import { ALL_CSS_CHAPTERS } from "@/lib/w3-css-chapters-data";
@@ -79,12 +83,20 @@ export function NavbarSearch() {
   // Sync search history based on logged-in user account or guest localStorage
   const loadSearchHistory = useCallback(async () => {
     if (user) {
+      const localHist = getLocalSearchHistory(user.email);
+      if (localHist.length > 0) {
+        setHistory(localHist);
+      }
       try {
         const res = await fetch("/api/search/history");
         if (res.ok) {
           const data = await res.json();
           if (Array.isArray(data.history)) {
-            setHistory(data.history);
+            const combined = Array.from(new Set([...localHist, ...data.history])).slice(0, 15);
+            setHistory(combined);
+            if (combined.length !== localHist.length) {
+              saveLocalSearchHistory(user.email, combined, user);
+            }
             return;
           }
         }
@@ -109,6 +121,8 @@ export function NavbarSearch() {
 
   useEffect(() => {
     loadSearchHistory();
+    window.addEventListener("devacademy-cloud-synced", loadSearchHistory);
+    return () => window.removeEventListener("devacademy-cloud-synced", loadSearchHistory);
   }, [loadSearchHistory]);
 
   const saveToHistory = async (item: string) => {
@@ -116,12 +130,11 @@ export function NavbarSearch() {
     if (!trimmed) return;
 
     // Optimistically update local state
-    setHistory((prev) => {
-      const filtered = prev.filter((q) => q.toLowerCase() !== trimmed.toLowerCase());
-      return [trimmed, ...filtered].slice(0, 15);
-    });
+    const nextList = [trimmed, ...history.filter((q) => q.toLowerCase() !== trimmed.toLowerCase())].slice(0, 15);
+    setHistory(nextList);
 
     if (user) {
+      saveLocalSearchHistory(user.email, nextList, user);
       try {
         await fetch("/api/search/history", {
           method: "POST",
@@ -133,19 +146,18 @@ export function NavbarSearch() {
       }
     } else {
       try {
-        const saved = localStorage.getItem(GUEST_STORAGE_KEY);
-        const prevList: string[] = saved ? JSON.parse(saved) : [];
-        const next = [trimmed, ...prevList.filter((q) => q.toLowerCase() !== trimmed.toLowerCase())].slice(0, 15);
-        localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(next));
+        localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(nextList));
       } catch {}
     }
   };
 
   const removeFromHistory = async (e: React.MouseEvent, item: string) => {
     e.stopPropagation();
-    setHistory((prev) => prev.filter((q) => q !== item));
+    const nextList = history.filter((q) => q !== item);
+    setHistory(nextList);
 
     if (user) {
+      saveLocalSearchHistory(user.email, nextList, user);
       try {
         await fetch(`/api/search/history?query=${encodeURIComponent(item)}`, {
           method: "DELETE",
@@ -155,12 +167,7 @@ export function NavbarSearch() {
       }
     } else {
       try {
-        const saved = localStorage.getItem(GUEST_STORAGE_KEY);
-        if (saved) {
-          const prevList: string[] = JSON.parse(saved);
-          const next = prevList.filter((q) => q !== item);
-          localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(next));
-        }
+        localStorage.setItem(GUEST_STORAGE_KEY, JSON.stringify(nextList));
       } catch {}
     }
   };
@@ -170,6 +177,7 @@ export function NavbarSearch() {
     setHistory([]);
 
     if (user) {
+      saveLocalSearchHistory(user.email, [], user);
       try {
         await fetch("/api/search/history?all=true", {
           method: "DELETE",

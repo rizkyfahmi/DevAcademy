@@ -6,6 +6,11 @@ import { motion, AnimatePresence } from "motion/react";
 import { Bookmark, X, ExternalLink, Trash2, BookOpen, LogIn } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAuthModal } from "@/context/AuthModalContext";
+import {
+  getLocalBookmarks,
+  saveLocalBookmarks,
+  toggleLocalBookmark,
+} from "@/lib/user-progress-store";
 
 interface BookmarkItem {
   id: string;
@@ -41,12 +46,30 @@ export function BookmarksModal({ isOpen, onClose }: BookmarksModalProps) {
       setBookmarks([]);
       return;
     }
-    setLoading(true);
+    const localList = getLocalBookmarks(user.email);
+    setBookmarks(localList);
+
+    setLoading(localList.length === 0);
     try {
       const res = await fetch("/api/bookmarks");
       const data = await res.json();
       if (data.authenticated && Array.isArray(data.bookmarks)) {
-        setBookmarks(data.bookmarks);
+        // Merge API bookmarks with local/TiDB bookmarks
+        const map = new Map<string, BookmarkItem>();
+        for (const b of localList) {
+          map.set(`${b.tech.toUpperCase()}_${b.chapter_slug}`, b);
+        }
+        for (const b of data.bookmarks) {
+          const key = `${String(b.tech).toUpperCase()}_${b.chapter_slug}`;
+          if (!map.has(key)) {
+            map.set(key, b);
+          }
+        }
+        const merged = Array.from(map.values());
+        setBookmarks(merged);
+        if (merged.length !== localList.length) {
+          saveLocalBookmarks(user.email, merged, user);
+        }
       }
     } catch (err) {
       console.warn("Failed to fetch bookmarks:", err);
@@ -74,8 +97,25 @@ export function BookmarksModal({ isOpen, onClose }: BookmarksModalProps) {
 
   const handleRemove = async (bm: BookmarkItem) => {
     setRemovingId(bm.id);
+    if (user) {
+      toggleLocalBookmark(
+        user.email,
+        {
+          tech: bm.tech,
+          chapter_slug: bm.chapter_slug,
+          title: bm.title,
+          url: bm.url,
+        },
+        user
+      );
+    }
+    setBookmarks((prev) => prev.filter((item) => item.id !== bm.id));
+    if (typeof window !== "undefined") {
+      localStorage.removeItem(`devacademy_bookmark_${bm.tech.toLowerCase()}_${bm.chapter_slug}`);
+      window.dispatchEvent(new CustomEvent("devacademy-bookmarks-updated"));
+    }
     try {
-      const res = await fetch("/api/bookmarks", {
+      await fetch("/api/bookmarks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -85,14 +125,6 @@ export function BookmarksModal({ isOpen, onClose }: BookmarksModalProps) {
           url: bm.url,
         }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setBookmarks((prev) => prev.filter((item) => item.id !== bm.id));
-        if (typeof window !== "undefined") {
-          localStorage.removeItem(`devacademy_bookmark_${bm.tech.toLowerCase()}_${bm.chapter_slug}`);
-        }
-        window.dispatchEvent(new CustomEvent("devacademy-bookmarks-updated"));
-      }
     } catch (err) {
       console.warn("Error removing bookmark:", err);
     } finally {

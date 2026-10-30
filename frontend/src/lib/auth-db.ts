@@ -215,6 +215,37 @@ export function hashPassword(password: string): { hash: string; salt: string } {
   return { hash, salt };
 }
 
+const SESSION_SECRET =
+  process.env.JWT_SECRET ||
+  process.env.GITHUB_CLIENT_SECRET ||
+  "devacademy_stateless_session_secret_key_2026";
+
+export function deterministicUserId(email: string): string {
+  const clean = email.toLowerCase().trim();
+  const h = crypto.createHash("sha256").update(`devacademy_user:${clean}`).digest("hex");
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+}
+
+function signStatelessSession(payload: Record<string, any>): string {
+  const data = Buffer.from(JSON.stringify(payload), "utf8").toString("base64url");
+  const sig = crypto.createHmac("sha256", SESSION_SECRET).update(data).digest("base64url");
+  return `st1.${data}.${sig}`;
+}
+
+function verifyStatelessSession(token: string): Record<string, any> | null {
+  try {
+    if (!token || !token.startsWith("st1.")) return null;
+    const parts = token.split(".");
+    if (parts.length !== 3) return null;
+    const [, data, sig] = parts;
+    const expectedSig = crypto.createHmac("sha256", SESSION_SECRET).update(data).digest("base64url");
+    if (sig !== expectedSig) return null;
+    return JSON.parse(Buffer.from(data, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+}
+
 export function verifyPassword(
   password: string,
   storedHash: string,
@@ -240,7 +271,7 @@ export function createUser(params: {
   avatarUrl?: string;
 }): UserRecord {
   const db = getDb();
-  const id = crypto.randomUUID();
+  const id = deterministicUserId(params.email);
   const now = new Date().toISOString();
 
   let password_hash: string | null = null;
@@ -340,13 +371,32 @@ export function findUserByOAuth(
 export function createSession(userId: string): { token: string; expiresAt: Date } {
   const db = getDb();
   const id = crypto.randomUUID();
-  const token = crypto.randomBytes(32).toString("hex");
-  // 30 days session
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
   const now = new Date().toISOString();
+  const user = findUserById(userId);
+
+  const token = user
+    ? signStatelessSession({
+        sid: id,
+        exp: expiresAt.toISOString(),
+        iat: now,
+        u: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          first_name: user.first_name,
+          last_name: user.last_name,
+          avatar_url: user.avatar_url,
+          role: user.role,
+          newsletter: user.newsletter,
+          created_at: user.created_at,
+          updated_at: user.updated_at,
+        },
+      })
+    : crypto.randomBytes(32).toString("hex");
 
   const stmt = db.prepare(`
-    INSERT INTO sessions (id, user_id, token, expires_at, created_at)
+    INSERT OR REPLACE INTO sessions (id, user_id, token, expires_at, created_at)
     VALUES (?, ?, ?, ?, ?)
   `);
 
@@ -370,29 +420,82 @@ export function findSession(token: string): {
   `);
 
   const row = stmt.get(token, now) as any;
-  if (!row) return null;
+  if (row) {
+    return {
+      session: {
+        id: row.s_id,
+        user_id: row.s_user_id,
+        token: row.s_token,
+        expires_at: row.s_expires_at,
+        created_at: row.s_created_at,
+      },
+      user: {
+        id: row.id,
+        email: row.email,
+        name: row.name,
+        first_name: row.first_name,
+        last_name: row.last_name,
+        avatar_url: row.avatar_url,
+        role: row.role,
+        newsletter: row.newsletter,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+      },
+    };
+  }
 
-  return {
-    session: {
-      id: row.s_id,
-      user_id: row.s_user_id,
-      token: row.s_token,
-      expires_at: row.s_expires_at,
-      created_at: row.s_created_at,
-    },
-    user: {
-      id: row.id,
-      email: row.email,
-      name: row.name,
-      first_name: row.first_name,
-      last_name: row.last_name,
-      avatar_url: row.avatar_url,
-      role: row.role,
-      newsletter: row.newsletter,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
-    },
-  };
+  // Fallback for Vercel Serverless cold starts: verify signed stateless token and re-hydrate SQLite
+  const decoded = verifyStatelessSession(token);
+  if (decoded && decoded.u && decoded.exp && decoded.exp > now) {
+    const u = decoded.u;
+    try {
+      db.prepare(`
+        INSERT OR IGNORE INTO users (id, email, password_hash, salt, name, first_name, last_name, avatar_url, role, newsletter, created_at, updated_at)
+        VALUES (?, ?, NULL, NULL, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        u.id,
+        u.email,
+        u.name,
+        u.first_name || null,
+        u.last_name || null,
+        u.avatar_url || null,
+        u.role || "STUDENT",
+        u.newsletter || 0,
+        u.created_at || now,
+        u.updated_at || now
+      );
+
+      db.prepare(`
+        INSERT OR IGNORE INTO sessions (id, user_id, token, expires_at, created_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(decoded.sid || crypto.randomUUID(), u.id, token, decoded.exp, decoded.iat || now);
+    } catch {}
+
+    const freshUser = findUserById(u.id) || u;
+    return {
+      session: {
+        id: decoded.sid || "stateless",
+        user_id: freshUser.id,
+        token,
+        expires_at: decoded.exp,
+        created_at: decoded.iat || now,
+      },
+      user: {
+        id: freshUser.id,
+        email: freshUser.email,
+        name: freshUser.name,
+        first_name: freshUser.first_name,
+        last_name: freshUser.last_name,
+        avatar_url: freshUser.avatar_url,
+        role: freshUser.role || "STUDENT",
+        newsletter: freshUser.newsletter || 0,
+        created_at: freshUser.created_at || now,
+        updated_at: freshUser.updated_at || now,
+      },
+    };
+  }
+
+  return null;
 }
 
 export function deleteSession(token: string): void {

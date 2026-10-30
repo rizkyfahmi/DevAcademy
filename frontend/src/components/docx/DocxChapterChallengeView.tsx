@@ -1,8 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Check, X, Lightbulb, Play, RotateCcw, ArrowRight } from "lucide-react";
 import { DocxBookmarkButton } from "./DocxBookmarkButton";
+import { useAuth } from "@/context/AuthContext";
+import {
+  getChapterChallengeProgress,
+  saveChapterChallengeProgress,
+  markChapterAsCompleted,
+} from "@/lib/user-progress-store";
 import { getChapterChallenge, ALL_HTML_CHAPTERS } from "@/lib/w3-html-chapters-data";
 import { getChapterCssChallenge, ALL_CSS_CHAPTERS } from "@/lib/w3-css-chapters-data";
 import { getChapterJsChallenge, ALL_JS_CHAPTERS } from "@/lib/w3-js-chapters-data";
@@ -21,6 +27,7 @@ export function DocxChapterChallengeView({
   chapterKey,
   onNavigate,
 }: DocxChapterChallengeViewProps) {
+  const { user } = useAuth();
   const normalized = normalizeTechKey(tech);
   const challenge = normalized === "CSS" 
     ? getChapterCssChallenge(chapterKey) 
@@ -38,6 +45,43 @@ export function DocxChapterChallengeView({
   const [submitted, setSubmitted] = useState(false);
   const [showHint, setShowHint] = useState(false);
   const [showSolution, setShowSolution] = useState(false);
+  const isHydratedRef = useRef(false);
+
+  // Hydrate challenge state
+  useEffect(() => {
+    isHydratedRef.current = false;
+    const saved = getChapterChallengeProgress(user?.email, normalized, chapterKey);
+    if (saved) {
+      setUserInput(saved.userInput || "");
+      setSubmitted(!!saved.submitted);
+      setShowHint(!!saved.showHint);
+      setShowSolution(!!saved.showSolution);
+    } else {
+      setUserInput("");
+      setSubmitted(false);
+      setShowHint(false);
+      setShowSolution(false);
+    }
+    isHydratedRef.current = true;
+  }, [user?.email, normalized, chapterKey]);
+
+  useEffect(() => {
+    if (!isHydratedRef.current) return;
+    if (!userInput && !submitted && !showHint && !showSolution) return;
+    saveChapterChallengeProgress(
+      user?.email,
+      normalized,
+      chapterKey,
+      {
+        userInput,
+        submitted,
+        showHint,
+        showSolution,
+        updatedAt: Date.now(),
+      },
+      user
+    );
+  }, [userInput, submitted, showHint, showSolution, user, normalized, chapterKey]);
 
   const allChapters = normalized === "CSS" 
     ? ALL_CSS_CHAPTERS 
@@ -67,6 +111,19 @@ export function DocxChapterChallengeView({
     setSubmitted(false);
     setShowHint(false);
     setShowSolution(false);
+    saveChapterChallengeProgress(
+      user?.email,
+      normalized,
+      chapterKey,
+      {
+        userInput: "",
+        submitted: false,
+        showHint: false,
+        showSolution: false,
+        updatedAt: Date.now(),
+      },
+      user
+    );
   };
 
   const handleRevealSolution = () => {

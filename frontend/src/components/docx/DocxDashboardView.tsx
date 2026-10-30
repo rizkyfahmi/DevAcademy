@@ -13,6 +13,12 @@ import {
 } from "lucide-react";
 import { useAuthModal } from "@/context/AuthModalContext";
 import { useAuth } from "@/context/AuthContext";
+import {
+  getCompletedChaptersList,
+  mergeCompletedChaptersList,
+  markChapterAsCompleted,
+  saveLastVisitedChapter,
+} from "@/lib/user-progress-store";
 import { LandingHeader } from "@/components/landing/LandingHeader";
 import { DocxHtmlHomeContent } from "./DocxHtmlHomeContent";
 import { DocxTechHomeContent, TechDocxType } from "./DocxTechHomeContent";
@@ -72,21 +78,35 @@ export function DocxDashboardView({
     }
   }, [initialChapter, initialSubChapter]);
 
-  // Fetch completed chapters for current user
+  // Fetch completed chapters for current user (both from localStorage/TiDB sync AND /api/progress/chapter)
   useEffect(() => {
+    const localList = getCompletedChaptersList(user?.email, activeTech);
+    setCompletedChapters(new Set(localList));
+
     if (!user) {
-      setCompletedChapters(new Set());
       return;
     }
     fetch(`/api/progress/chapter?tech=${encodeURIComponent(activeTech)}`)
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.chapters && Array.isArray(data.chapters)) {
-          setCompletedChapters(new Set(data.chapters.map((c: any) => c.chapter_slug)));
+          const apiSlugs = data.chapters.map((c: any) => c.chapter_slug);
+          const merged = mergeCompletedChaptersList(user.email, activeTech, apiSlugs, user);
+          setCompletedChapters(new Set(merged));
         }
       })
       .catch(() => {});
   }, [user, activeTech]);
+
+  // Listen for cloud sync completion to refresh completedChapters
+  useEffect(() => {
+    const handleCloudSynced = () => {
+      const localList = getCompletedChaptersList(user?.email, activeTech);
+      setCompletedChapters(new Set(localList));
+    };
+    window.addEventListener("devacademy-cloud-synced", handleCloudSynced);
+    return () => window.removeEventListener("devacademy-cloud-synced", handleCloudSynced);
+  }, [user?.email, activeTech]);
   const [activeChapterSlug, setActiveChapterSlug] = useState<string>(
     initialChapter === "exercises" ? "introduction" : initialChapter
   );
@@ -191,17 +211,18 @@ export function DocxDashboardView({
       window.history.pushState(null, "", url);
     }
 
-    if (user && chapterSlug && chapterSlug !== "home") {
-      fetch("/api/progress/chapter", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tech: activeTech, chapterSlug }),
-      })
-        .then((r) => (r.ok ? r.json() : null))
-        .then(() => {
-          setCompletedChapters((prev) => new Set([...prev, chapterSlug]));
-        })
-        .catch(() => {});
+    if (chapterSlug && chapterSlug !== "home") {
+      markChapterAsCompleted(user?.email, activeTech, chapterSlug, user);
+      saveLastVisitedChapter(user?.email, activeTech, chapterSlug, resolvedSub, user);
+      setCompletedChapters((prev) => new Set([...prev, chapterSlug]));
+
+      if (user) {
+        fetch("/api/progress/chapter", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tech: activeTech, chapterSlug }),
+        }).catch(() => {});
+      }
     }
 
     if (typeof window !== "undefined") {

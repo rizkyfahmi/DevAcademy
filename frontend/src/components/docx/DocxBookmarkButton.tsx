@@ -4,6 +4,10 @@ import { useState, useEffect } from "react";
 import { Bookmark, Check, AlertCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useAuthModal } from "@/context/AuthModalContext";
+import {
+  isLocalChapterBookmarked,
+  toggleLocalBookmark,
+} from "@/lib/user-progress-store";
 
 interface DocxBookmarkButtonProps {
   tech: string;
@@ -28,11 +32,14 @@ export function DocxBookmarkButton({
 
   // 1. Check bookmark state on mount & when user changes
   useEffect(() => {
-    // Check localStorage cache first for instant feedback
+    // Check unified store & localStorage cache first for instant feedback
     if (typeof window !== "undefined") {
-      const cached = localStorage.getItem(storageKey);
-      if (cached === "true") {
+      const inStore = isLocalChapterBookmarked(user?.email, tech, chapterSlug);
+      const cached = localStorage.getItem(storageKey) === "true";
+      if (inStore || cached) {
         setBookmarked(true);
+      } else {
+        setBookmarked(false);
       }
     }
 
@@ -45,13 +52,12 @@ export function DocxBookmarkButton({
       .then((res) => res.json())
       .then((data) => {
         if (isMounted && data.authenticated !== undefined) {
-          const isSaved = !!data.isBookmarked;
+          const inStore = isLocalChapterBookmarked(user?.email, tech, chapterSlug);
+          const isSaved = !!data.isBookmarked || inStore;
           setBookmarked(isSaved);
           if (typeof window !== "undefined") {
             if (isSaved) {
               localStorage.setItem(storageKey, "true");
-            } else {
-              localStorage.removeItem(storageKey);
             }
           }
         }
@@ -64,6 +70,19 @@ export function DocxBookmarkButton({
       isMounted = false;
     };
   }, [user, tech, chapterSlug, storageKey]);
+
+  useEffect(() => {
+    const handleSync = () => {
+      const inStore = isLocalChapterBookmarked(user?.email, tech, chapterSlug);
+      setBookmarked(inStore);
+    };
+    window.addEventListener("devacademy-cloud-synced", handleSync);
+    window.addEventListener("devacademy-bookmarks-updated", handleSync);
+    return () => {
+      window.removeEventListener("devacademy-cloud-synced", handleSync);
+      window.removeEventListener("devacademy-bookmarks-updated", handleSync);
+    };
+  }, [user?.email, tech, chapterSlug]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -81,49 +100,50 @@ export function DocxBookmarkButton({
     }
 
     setLoading(true);
-    const nextState = !bookmarked;
+    const resolvedUrl =
+      url || (typeof window !== "undefined" ? window.location.pathname : `/learn/${tech.toLowerCase()}`);
+
+    // Save to unified store + TiDB Cloud immediately
+    const { bookmarked: nextState } = toggleLocalBookmark(
+      user.email,
+      {
+        tech,
+        chapter_slug: chapterSlug,
+        title,
+        url: resolvedUrl,
+      },
+      user
+    );
     setBookmarked(nextState);
 
-    // Optimistic local storage update
     if (typeof window !== "undefined") {
       if (nextState) {
         localStorage.setItem(storageKey, "true");
       } else {
         localStorage.removeItem(storageKey);
       }
+      window.dispatchEvent(new CustomEvent("devacademy-bookmarks-updated"));
     }
 
+    showToast(
+      nextState
+        ? "Materi berhasil disimpan ke akun Anda!"
+        : "Materi dihapus dari bookmark."
+    );
+
     try {
-      const res = await fetch("/api/bookmarks", {
+      await fetch("/api/bookmarks", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tech,
           chapterSlug,
           title,
-          url: url || (typeof window !== "undefined" ? window.location.pathname : `/learn/${tech.toLowerCase()}`),
+          url: resolvedUrl,
         }),
       });
-
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setBookmarked(data.bookmarked);
-        showToast(
-          data.bookmarked
-            ? "Materi berhasil disimpan ke akun Anda!"
-            : "Materi dihapus dari bookmark."
-        );
-        // Dispatch global event for header / profile update
-        window.dispatchEvent(new CustomEvent("devacademy-bookmarks-updated"));
-      } else {
-        // Rollback
-        setBookmarked(!nextState);
-        showToast(data.error || "Gagal menyimpan materi");
-      }
     } catch {
-      // Rollback
-      setBookmarked(!nextState);
-      showToast("Gagal menghubungi server");
+      // Already persisted in localStorage + TiDB Cloud via toggleLocalBookmark
     } finally {
       setLoading(false);
     }

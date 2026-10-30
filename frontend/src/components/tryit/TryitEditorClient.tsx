@@ -21,6 +21,10 @@ import { useAuth } from "@/context/AuthContext";
 import { useAuthModal } from "@/context/AuthModalContext";
 import { SnippetsModal, SnippetItem } from "./SnippetsModal";
 import { LanguageIcon } from "@/components/common/LanguageIcon";
+import {
+  getLocalSnippets,
+  saveLocalSnippets,
+} from "@/lib/user-progress-store";
 
 function renderHighlightedCode(rawCode: string, langId: string, theme: "dark" | "light"): React.ReactNode {
   if (!rawCode) return null;
@@ -604,11 +608,28 @@ export function TryitEditorClient() {
 
   const fetchSavedSnippets = async () => {
     if (!user) return;
+    const localList = getLocalSnippets(user.email);
+    if (localList.length > 0) {
+      setSavedSnippets(localList);
+    }
     try {
       const res = await fetch("/api/snippets");
       const data = await res.json();
       if (data.authenticated && Array.isArray(data.snippets)) {
-        setSavedSnippets(data.snippets);
+        const map = new Map<string, SnippetItem>();
+        for (const s of localList) {
+          map.set(s.id, s);
+        }
+        for (const s of data.snippets) {
+          if (!map.has(s.id)) {
+            map.set(s.id, s);
+          }
+        }
+        const merged = Array.from(map.values());
+        setSavedSnippets(merged);
+        if (merged.length !== localList.length) {
+          saveLocalSnippets(user.email, merged, user);
+        }
       }
     } catch (err) {
       console.warn("Failed to fetch snippets:", err);
@@ -628,42 +649,56 @@ export function TryitEditorClient() {
     }
 
     setIsSaving(true);
+    const dateStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const title = `${currentLang.name} Snippet (${dateStr})`;
+    const nowIso = new Date().toISOString();
+    const fallbackSnippet: SnippetItem = {
+      id: `snip_${Date.now()}`,
+      lang: currentLang.id,
+      title,
+      code,
+      created_at: nowIso,
+      updated_at: nowIso,
+    };
+
     try {
-      const dateStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
       const res = await fetch("/api/snippets", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           lang: currentLang.id,
-          title: `${currentLang.name} Snippet (${dateStr})`,
+          title,
           code,
         }),
       });
 
       const data = await res.json();
-      if (res.ok && data.success) {
-        showToast("Kode berhasil disimpan ke akun Anda!");
-        setSavedSnippets((prev) => [data.snippet, ...prev]);
-      } else {
-        showToast(data.error || "Gagal menyimpan kode", true);
-      }
+      const savedItem: SnippetItem = res.ok && data?.snippet ? data.snippet : fallbackSnippet;
+      const nextList = [savedItem, ...savedSnippets.filter((s) => s.id !== savedItem.id)];
+      setSavedSnippets(nextList);
+      saveLocalSnippets(user.email, nextList, user);
+      showToast("Kode berhasil disimpan ke akun Anda!");
     } catch {
-      showToast("Gagal menghubungi server", true);
+      const nextList = [fallbackSnippet, ...savedSnippets];
+      setSavedSnippets(nextList);
+      saveLocalSnippets(user.email, nextList, user);
+      showToast("Kode berhasil disimpan ke akun Anda!");
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleDeleteSnippet = async (id: string) => {
+    const nextList = savedSnippets.filter((s) => s.id !== id);
+    setSavedSnippets(nextList);
+    if (user) {
+      saveLocalSnippets(user.email, nextList, user);
+    }
+    showToast("Snippet berhasil dihapus");
     try {
-      const res = await fetch(`/api/snippets?id=${id}`, { method: "DELETE" });
-      const data = await res.json();
-      if (res.ok && data.success) {
-        setSavedSnippets((prev) => prev.filter((s) => s.id !== id));
-        showToast("Snippet berhasil dihapus");
-      }
+      await fetch(`/api/snippets?id=${id}`, { method: "DELETE" });
     } catch {
-      showToast("Gagal menghapus snippet", true);
+      // already removed from unified store
     }
   };
 

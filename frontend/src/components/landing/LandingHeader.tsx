@@ -29,6 +29,7 @@ import { TutorialsModal } from "./TutorialsModal";
 import { BookmarksModal } from "@/components/bookmarks/BookmarksModal";
 import { NavbarSearch } from "@/components/search/NavbarSearch";
 import { normalizeTechKey } from "@/lib/w3-all-courses-catalog";
+import { getLocalBookmarks } from "@/lib/user-progress-store";
 
 const SUBNAV_LANGUAGES = [
   { name: "HTML", href: "/learn/html" },
@@ -222,24 +223,32 @@ export function LandingHeader({ activeTech, onSelectTech }: LandingHeaderProps =
       setBookmarkCount(0);
       return;
     }
+    const localList = getLocalBookmarks(user.email);
+    setBookmarkCount(localList.length);
     try {
       const res = await fetch("/api/bookmarks");
       const data = await res.json();
       if (data.authenticated && Array.isArray(data.bookmarks)) {
-        setBookmarkCount(data.bookmarks.length);
-      } else {
-        setBookmarkCount(0);
+        const keys = new Set<string>(
+          localList.map((b) => `${b.tech.toUpperCase()}_${b.chapter_slug}`)
+        );
+        for (const b of data.bookmarks) {
+          keys.add(`${String(b.tech).toUpperCase()}_${b.chapter_slug}`);
+        }
+        setBookmarkCount(keys.size);
       }
     } catch {
-      // fallback
+      // fallback to localList.length
     }
   }, [user]);
 
   useEffect(() => {
     updateBookmarkCount();
     window.addEventListener("devacademy-bookmarks-updated", updateBookmarkCount);
+    window.addEventListener("devacademy-cloud-synced", updateBookmarkCount);
     return () => {
       window.removeEventListener("devacademy-bookmarks-updated", updateBookmarkCount);
+      window.removeEventListener("devacademy-cloud-synced", updateBookmarkCount);
     };
   }, [updateBookmarkCount]);
 

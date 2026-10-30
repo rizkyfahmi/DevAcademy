@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useAuth } from "@/context/AuthContext";
+import {
+  getFullExerciseProgress,
+  saveFullExerciseProgress,
+  markChapterAsCompleted,
+} from "@/lib/user-progress-store";
 import Link from "next/link";
 import { 
   Check, 

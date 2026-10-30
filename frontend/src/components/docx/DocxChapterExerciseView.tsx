@@ -1,9 +1,15 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Check, X, ArrowRight, RotateCcw, Trophy, Award, Sparkles, BookOpen } from "lucide-react";
 import { DocxBookmarkButton } from "./DocxBookmarkButton";
 import { useAuthModal } from "@/context/AuthModalContext";
+import { useAuth } from "@/context/AuthContext";
+import {
+  getChapterExerciseProgress,
+  saveChapterExerciseProgress,
+  markChapterAsCompleted,
+} from "@/lib/user-progress-store";
 import { ALL_HTML_CHAPTERS } from "@/lib/w3-html-chapters-data";
 import { ALL_CSS_CHAPTERS } from "@/lib/w3-css-chapters-data";
 import { ALL_JS_CHAPTERS } from "@/lib/w3-js-chapters-data";
@@ -24,6 +30,7 @@ export function DocxChapterExerciseView({
   onNavigate,
 }: DocxChapterExerciseViewProps) {
   const { openSignIn } = useAuthModal();
+  const { user } = useAuth();
   const normalized = normalizeTechKey(tech);
 
   const allChapters = normalized === "CSS" 
@@ -84,6 +91,69 @@ export function DocxChapterExerciseView({
     2: false,
   });
   const [isCompleted, setIsCompleted] = useState(false);
+  const isHydratedRef = useRef(false);
+
+  // Hydrate saved state for this chapter exercise on mount / chapterKey / user change
+  useEffect(() => {
+    isHydratedRef.current = false;
+    const saved = getChapterExerciseProgress(user?.email, normalized, chapterKey);
+    if (saved) {
+      setCurrentIdx(typeof saved.currentIdx === "number" ? saved.currentIdx : 0);
+      setUserSelections(saved.userSelections || { 0: null, 1: null, 2: null });
+      setSubmittedMap(saved.submittedMap || { 0: false, 1: false, 2: false });
+      setShowAnswerMap(saved.showAnswerMap || { 0: false, 1: false, 2: false });
+      setIsCompleted(!!saved.isCompleted);
+    } else {
+      setCurrentIdx(0);
+      setUserSelections({ 0: null, 1: null, 2: null });
+      setSubmittedMap({ 0: false, 1: false, 2: false });
+      setShowAnswerMap({ 0: false, 1: false, 2: false });
+      setIsCompleted(false);
+    }
+    isHydratedRef.current = true;
+  }, [user?.email, normalized, chapterKey]);
+
+  // Listen for cloud sync completion
+  useEffect(() => {
+    const handleCloudSynced = () => {
+      const saved = getChapterExerciseProgress(user?.email, normalized, chapterKey);
+      if (saved) {
+        setCurrentIdx(typeof saved.currentIdx === "number" ? saved.currentIdx : 0);
+        setUserSelections(saved.userSelections || { 0: null, 1: null, 2: null });
+        setSubmittedMap(saved.submittedMap || { 0: false, 1: false, 2: false });
+        setShowAnswerMap(saved.showAnswerMap || { 0: false, 1: false, 2: false });
+        setIsCompleted(!!saved.isCompleted);
+      }
+    };
+    window.addEventListener("devacademy-cloud-synced", handleCloudSynced);
+    return () => window.removeEventListener("devacademy-cloud-synced", handleCloudSynced);
+  }, [user?.email, normalized, chapterKey]);
+
+  // Save state whenever user interacts
+  useEffect(() => {
+    if (!isHydratedRef.current) return;
+    const hasInteraction =
+      currentIdx > 0 ||
+      isCompleted ||
+      Object.values(userSelections).some((v) => v !== null) ||
+      Object.values(submittedMap).some(Boolean);
+    if (!hasInteraction) return;
+
+    saveChapterExerciseProgress(
+      user?.email,
+      normalized,
+      chapterKey,
+      {
+        currentIdx,
+        userSelections,
+        submittedMap,
+        showAnswerMap,
+        isCompleted,
+        updatedAt: Date.now(),
+      },
+      user
+    );
+  }, [currentIdx, userSelections, submittedMap, showAnswerMap, isCompleted, user, normalized, chapterKey]);
 
   const currentQ = questions[currentIdx] || questions[0];
   const selectedOption = userSelections[currentIdx] ?? null;
@@ -112,6 +182,14 @@ export function DocxChapterExerciseView({
   const handleSubmitCurrent = () => {
     if (selectedOption === null) return;
     setSubmittedMap((prev) => ({ ...prev, [currentIdx]: true }));
+    markChapterAsCompleted(user?.email, normalized, chapterKey, user);
+    if (user) {
+      fetch("/api/progress/chapter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tech: normalized, chapterSlug: chapterKey }),
+      }).catch(() => {});
+    }
   };
 
   const handleResetCurrent = () => {
@@ -126,6 +204,20 @@ export function DocxChapterExerciseView({
     setSubmittedMap({ 0: false, 1: false, 2: false });
     setShowAnswerMap({ 0: false, 1: false, 2: false });
     setIsCompleted(false);
+    saveChapterExerciseProgress(
+      user?.email,
+      normalized,
+      chapterKey,
+      {
+        currentIdx: 0,
+        userSelections: { 0: null, 1: null, 2: null },
+        submittedMap: { 0: false, 1: false, 2: false },
+        showAnswerMap: { 0: false, 1: false, 2: false },
+        isCompleted: false,
+        updatedAt: Date.now(),
+      },
+      user
+    );
   };
 
   const handleNextQuestion = () => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Bookmark, 
@@ -14,6 +14,8 @@ import {
 import { DocxBookmarkButton } from "./DocxBookmarkButton";
 import { DocxCopyButton } from "./DocxCopyButton";
 import { useAuthModal } from "@/context/AuthModalContext";
+import { useAuth } from "@/context/AuthContext";
+import { getHomeQuizProgress, saveHomeQuizProgress } from "@/lib/user-progress-store";
 
 interface DocxHtmlHomeContentProps {
   onGoNext?: () => void;
@@ -22,10 +24,25 @@ interface DocxHtmlHomeContentProps {
 
 export function DocxHtmlHomeContent({ onGoNext, onSelectChapter }: DocxHtmlHomeContentProps = {}) {
   const { openSignIn } = useAuthModal();
+  const { user } = useAuth();
 
   // Exercise state
   const [selectedAnswer, setSelectedAnswer] = useState<string | null>(null);
   const [exerciseSubmitted, setExerciseSubmitted] = useState(false);
+
+  useEffect(() => {
+    const saved = getHomeQuizProgress(user?.email, "HTML");
+    if (saved) {
+      setSelectedAnswer(saved.selectedAnswer);
+      setExerciseSubmitted(!!saved.submitted);
+    }
+  }, [user?.email]);
+
+  const handleSelectHomeOption = (val: string) => {
+    setSelectedAnswer(val);
+    setExerciseSubmitted(false);
+    saveHomeQuizProgress(user?.email, "HTML", val, false, user);
+  };
 
   // Live code runner state
   const [showLivePreview, setShowLivePreview] = useState(false);
@@ -48,6 +65,7 @@ export function DocxHtmlHomeContent({ onGoNext, onSelectChapter }: DocxHtmlHomeC
   const handleExerciseSubmit = () => {
     if (!selectedAnswer) return;
     setExerciseSubmitted(true);
+    saveHomeQuizProgress(user?.email, "HTML", selectedAnswer, true, user);
   };
 
   const referenceList = [
@@ -218,10 +236,7 @@ export function DocxHtmlHomeContent({ onGoNext, onSelectChapter }: DocxHtmlHomeC
                 name="hyperlink-quiz"
                 value="A"
                 checked={selectedAnswer === "A"}
-                onChange={() => {
-                  setSelectedAnswer("A");
-                  setExerciseSubmitted(false);
-                }}
+                onChange={() => handleSelectHomeOption("A")}
               />
               <span className="w3-option-radio-bullet" />
               <code>&lt;a href=&apos;https://devacademy.id&apos;&gt;visit DevAcademy.com!&lt;/a&gt;</code>
@@ -233,10 +248,7 @@ export function DocxHtmlHomeContent({ onGoNext, onSelectChapter }: DocxHtmlHomeC
                 name="hyperlink-quiz"
                 value="B"
                 checked={selectedAnswer === "B"}
-                onChange={() => {
-                  setSelectedAnswer("B");
-                  setExerciseSubmitted(false);
-                }}
+                onChange={() => handleSelectHomeOption("B")}
               />
               <span className="w3-option-radio-bullet" />
               <code>&lt;link href=&apos;https://devacademy.id&apos;&gt;visit DevAcademy.com!&lt;/link&gt;</code>
@@ -248,10 +260,7 @@ export function DocxHtmlHomeContent({ onGoNext, onSelectChapter }: DocxHtmlHomeC
                 name="hyperlink-quiz"
                 value="C"
                 checked={selectedAnswer === "C"}
-                onChange={() => {
-                  setSelectedAnswer("C");
-                  setExerciseSubmitted(false);
-                }}
+                onChange={() => handleSelectHomeOption("C")}
               />
               <span className="w3-option-radio-bullet" />
               <code>&lt;alink href=&apos;https://devacademy.id&apos;&gt;visit DevAcademy.com!&lt;/alink&gt;</code>

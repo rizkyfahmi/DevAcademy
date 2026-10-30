@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { findSession, updateUserName } from "@/lib/auth-db";
+import { findSession, updateUserName, createSession } from "@/lib/auth-db";
 
 export async function GET(req: NextRequest) {
   try {
@@ -58,7 +58,8 @@ export async function PATCH(req: NextRequest) {
       return NextResponse.json({ success: false, error: "User tidak ditemukan" }, { status: 404 });
     }
 
-    return NextResponse.json({
+    const { token: newToken, expiresAt } = createSession(updatedUser.id);
+    const res = NextResponse.json({
       success: true,
       user: {
         id: updatedUser.id,
@@ -70,6 +71,16 @@ export async function PATCH(req: NextRequest) {
         avatarUrl: updatedUser.avatar_url,
       },
     });
+
+    res.cookies.set("devacademy_session", newToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      expires: expiresAt,
+      path: "/",
+    });
+
+    return res;
   } catch (error: any) {
     console.error("[Update Name API Error]:", error);
     return NextResponse.json({ success: false, error: error.message || "Gagal mengubah nama" }, { status: 500 });

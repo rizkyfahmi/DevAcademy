@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { 
   Bookmark, 
@@ -8,6 +8,8 @@ import {
   Copy, 
 } from "lucide-react";
 import { useAuthModal } from "@/context/AuthModalContext";
+import { useAuth } from "@/context/AuthContext";
+import { getHomeQuizProgress, saveHomeQuizProgress } from "@/lib/user-progress-store";
 import { getOrCreateCourseMeta, normalizeTechKey, getSlugForTech } from "@/lib/w3-all-courses-catalog";
 import { DocxBookmarkButton } from "./DocxBookmarkButton";
 import { DocxCopyButton } from "./DocxCopyButton";
@@ -348,6 +350,7 @@ const TECH_CONFIGS: Record<TechDocxType, TechConfig> = {
 
 export function DocxTechHomeContent({ tech, onGoNext, onSelectChapter }: DocxTechHomeContentProps) {
   const { openSignIn } = useAuthModal();
+  const { user } = useAuth();
   const normalized = normalizeTechKey(tech);
   const config = (TECH_CONFIGS as Record<string, TechConfig>)[normalized] || (() => {
     const meta = getOrCreateCourseMeta(normalized);
@@ -388,9 +391,21 @@ export function DocxTechHomeContent({ tech, onGoNext, onSelectChapter }: DocxTec
   const [showLivePreview, setShowLivePreview] = useState(false);
   const [interactiveJsText, setInteractiveJsText] = useState("");
 
+  useEffect(() => {
+    const saved = getHomeQuizProgress(user?.email, normalized);
+    if (saved) {
+      setSelectedAnswer(saved.selectedAnswer);
+      setExerciseSubmitted(!!saved.submitted);
+    } else {
+      setSelectedAnswer(null);
+      setExerciseSubmitted(false);
+    }
+  }, [user?.email, normalized]);
+
   const handleExerciseSubmit = () => {
     if (!selectedAnswer) return;
     setExerciseSubmitted(true);
+    saveHomeQuizProgress(user?.email, normalized, selectedAnswer, true, user);
   };
 
   return (
@@ -541,6 +556,7 @@ export function DocxTechHomeContent({ tech, onGoNext, onSelectChapter }: DocxTec
                     onChange={() => {
                       setSelectedAnswer(opt.key);
                       setExerciseSubmitted(false);
+                      saveHomeQuizProgress(user?.email, normalized, opt.key, false, user);
                     }}
                   />
                   <span className="w3-option-radio-bullet" />
