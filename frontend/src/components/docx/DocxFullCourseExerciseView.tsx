@@ -24,14 +24,90 @@ interface DocxFullCourseExerciseViewProps {
 }
 
 export function DocxFullCourseExerciseView({ pack }: DocxFullCourseExerciseViewProps) {
+  const { user } = useAuth();
+  const packKey = (pack.slug || pack.techKey || "html").toLowerCase();
+
   const [currentNum, setCurrentNum] = useState<number>(1);
   const [userAnswers, setUserAnswers] = useState<Record<number, number>>({});
   const [submittedMap, setSubmittedMap] = useState<Record<number, boolean>>({});
+  const [selectedOptionMap, setSelectedOptionMap] = useState<Record<number, number | null>>({});
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [jumpInput, setJumpInput] = useState<string>("");
   const [jumpError, setJumpError] = useState<string>("");
   const [selectedChapterSlug, setSelectedChapterSlug] = useState<string>("all");
   const exerciseCardRef = useRef<HTMLDivElement>(null);
+
+  const persistNow = useCallback(
+    (
+      nextNum: number,
+      nextAnswers: Record<number, number>,
+      nextSubmitted: Record<number, boolean>,
+      nextSelectedOptions: Record<number, number | null>,
+      nextChapSlug: string,
+      overwrite = false
+    ) => {
+      const payload = {
+        currentNum: nextNum,
+        userAnswers: nextAnswers,
+        submittedMap: nextSubmitted,
+        selectedOptionMap: nextSelectedOptions,
+        selectedChapterSlug: nextChapSlug,
+        updatedAt: Date.now(),
+      };
+      saveFullExerciseProgress(user?.email, packKey, payload, user, overwrite);
+      if (pack.techKey && pack.techKey.toLowerCase() !== packKey) {
+        saveFullExerciseProgress(user?.email, pack.techKey.toLowerCase(), payload, user, overwrite);
+      }
+    },
+    [user, packKey, pack.techKey]
+  );
+
+  // Hydrate saved state on mount & when user or packKey changes
+  const hydrateFromStore = useCallback(() => {
+    const saved =
+      getFullExerciseProgress(user?.email, packKey) ||
+      getFullExerciseProgress(user?.email, pack.techKey) ||
+      getFullExerciseProgress(null, packKey);
+
+    if (saved) {
+      const restoredNum =
+        typeof saved.currentNum === "number" &&
+        saved.currentNum >= 1 &&
+        saved.currentNum <= pack.questionsCount
+          ? saved.currentNum
+          : 1;
+      const restoredAnswers = saved.userAnswers || {};
+      const restoredSubmitted = saved.submittedMap || {};
+      const restoredSelectedMap = saved.selectedOptionMap || {};
+      const restoredChap = saved.selectedChapterSlug || "all";
+
+      setCurrentNum(restoredNum);
+      setUserAnswers(restoredAnswers);
+      setSubmittedMap(restoredSubmitted);
+      setSelectedOptionMap(restoredSelectedMap);
+      setSelectedChapterSlug(restoredChap);
+
+      const activeOpt =
+        restoredSelectedMap[restoredNum] !== undefined && restoredSelectedMap[restoredNum] !== null
+          ? restoredSelectedMap[restoredNum]
+          : restoredAnswers[restoredNum] !== undefined
+          ? restoredAnswers[restoredNum]
+          : null;
+      setSelectedOption(activeOpt);
+    }
+  }, [user?.email, packKey, pack.techKey, pack.questionsCount]);
+
+  useEffect(() => {
+    hydrateFromStore();
+  }, [hydrateFromStore]);
+
+  useEffect(() => {
+    const handleCloudSync = () => {
+      hydrateFromStore();
+    };
+    window.addEventListener("devacademy-cloud-synced", handleCloudSync);
+    return () => window.removeEventListener("devacademy-cloud-synced", handleCloudSync);
+  }, [hydrateFromStore]);
 
   const activeQuestion: ExerciseItemWithMeta = useMemo(() => {
     const found = pack.questions.find((q) => q.globalNumber === currentNum);
@@ -40,23 +116,37 @@ export function DocxFullCourseExerciseView({ pack }: DocxFullCourseExerciseViewP
 
   // Statistics calculation
   const totalQuestions = pack.questionsCount;
-  const answeredCount = Object.keys(submittedMap).length;
+  const answeredCount = Object.keys(submittedMap).filter((k) => submittedMap[Number(k)]).length;
   const correctCount = useMemo(() => {
     return Object.entries(userAnswers).filter(([numStr, ansIdx]) => {
+      if (!submittedMap[Number(numStr)]) return false;
       const q = pack.questions.find((item) => item.globalNumber === Number(numStr));
       return q && ansIdx === q.correctIndex;
     }).length;
-  }, [pack.questions, userAnswers]);
+  }, [pack.questions, userAnswers, submittedMap]);
 
-  const wrongCount = answeredCount - correctCount;
+  const wrongCount = Math.max(0, answeredCount - correctCount);
 
   // Jump to specific question number
-  const handleJumpToNumber = (targetNum: number) => {
+  const handleJumpToNumber = (targetNum: number, customChapSlug?: string) => {
     if (targetNum >= 1 && targetNum <= totalQuestions) {
+      const nextOpt =
+        selectedOptionMap[targetNum] !== undefined && selectedOptionMap[targetNum] !== null
+          ? selectedOptionMap[targetNum]
+          : userAnswers[targetNum] !== undefined
+          ? userAnswers[targetNum]
+          : null;
       setCurrentNum(targetNum);
-      setSelectedOption(userAnswers[targetNum] !== undefined ? userAnswers[targetNum] : null);
+      setSelectedOption(nextOpt);
       setJumpError("");
       setJumpInput("");
+      persistNow(
+        targetNum,
+        userAnswers,
+        submittedMap,
+        selectedOptionMap,
+        customChapSlug ?? selectedChapterSlug
+      );
       if (exerciseCardRef.current) {
         exerciseCardRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
       } else {
@@ -80,33 +170,56 @@ export function DocxFullCourseExerciseView({ pack }: DocxFullCourseExerciseViewP
   // Jump to chapter start
   const handleChapterSelect = (slug: string) => {
     setSelectedChapterSlug(slug);
-    if (slug === "all") return;
+    if (slug === "all") {
+      persistNow(currentNum, userAnswers, submittedMap, selectedOptionMap, "all");
+      return;
+    }
     const chap = pack.chapters.find((c) => c.slug === slug);
     if (chap) {
-      handleJumpToNumber(chap.startIndex);
+      handleJumpToNumber(chap.startIndex, slug);
     }
+  };
+
+  // Select Option (immediately saved even before clicking Submit!)
+  const handleSelectOption = (optIdx: number) => {
+    if (submittedMap[currentNum]) return;
+    setSelectedOption(optIdx);
+    const nextSelectedMap = { ...selectedOptionMap, [currentNum]: optIdx };
+    setSelectedOptionMap(nextSelectedMap);
+    persistNow(currentNum, userAnswers, submittedMap, nextSelectedMap, selectedChapterSlug);
   };
 
   // Submit Answer
   const handleSubmitAnswer = () => {
     if (selectedOption === null) return;
-    setUserAnswers((prev) => ({ ...prev, [currentNum]: selectedOption }));
-    setSubmittedMap((prev) => ({ ...prev, [currentNum]: true }));
+    const nextAnswers = { ...userAnswers, [currentNum]: selectedOption };
+    const nextSubmitted = { ...submittedMap, [currentNum]: true };
+    const nextSelectedMap = { ...selectedOptionMap, [currentNum]: selectedOption };
+
+    setUserAnswers(nextAnswers);
+    setSubmittedMap(nextSubmitted);
+    setSelectedOptionMap(nextSelectedMap);
+    persistNow(currentNum, nextAnswers, nextSubmitted, nextSelectedMap, selectedChapterSlug);
+
+    if (activeQuestion?.chapterSlug) {
+      markChapterAsCompleted(user?.email, pack.techKey, activeQuestion.chapterSlug, user);
+    }
   };
 
   // Reset answer for current question
   const handleResetCurrent = () => {
-    setUserAnswers((prev) => {
-      const next = { ...prev };
-      delete next[currentNum];
-      return next;
-    });
-    setSubmittedMap((prev) => {
-      const next = { ...prev };
-      delete next[currentNum];
-      return next;
-    });
+    const nextAnswers = { ...userAnswers };
+    delete nextAnswers[currentNum];
+    const nextSubmitted = { ...submittedMap };
+    delete nextSubmitted[currentNum];
+    const nextSelectedMap = { ...selectedOptionMap };
+    delete nextSelectedMap[currentNum];
+
+    setUserAnswers(nextAnswers);
+    setSubmittedMap(nextSubmitted);
+    setSelectedOptionMap(nextSelectedMap);
     setSelectedOption(null);
+    persistNow(currentNum, nextAnswers, nextSubmitted, nextSelectedMap, selectedChapterSlug, true);
   };
 
   // Reset all answers
@@ -114,8 +227,10 @@ export function DocxFullCourseExerciseView({ pack }: DocxFullCourseExerciseViewP
     if (window.confirm(`Yakin ingin mereset seluruh progress latihan ${pack.techName}? Semua jawaban (${answeredCount} soal) akan dikosongkan.`)) {
       setUserAnswers({});
       setSubmittedMap({});
+      setSelectedOptionMap({});
       setSelectedOption(null);
       setCurrentNum(1);
+      persistNow(1, {}, {}, {}, "all", true);
     }
   };
 
@@ -324,11 +439,7 @@ export function DocxFullCourseExerciseView({ pack }: DocxFullCourseExerciseViewP
               return (
                 <label
                   key={optIdx}
-                  onClick={() => {
-                    if (!isSubmitted) {
-                      setSelectedOption(optIdx);
-                    }
-                  }}
+                  onClick={() => handleSelectOption(optIdx)}
                   style={{
                     display: "flex",
                     alignItems: "center",

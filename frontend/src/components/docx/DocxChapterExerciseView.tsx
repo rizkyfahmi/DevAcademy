@@ -93,10 +93,34 @@ export function DocxChapterExerciseView({
   const [isCompleted, setIsCompleted] = useState(false);
   const isHydratedRef = useRef(false);
 
+  const persistExercise = (
+    nextIdx: number,
+    nextSelections: Record<number, number | null>,
+    nextSubmitted: Record<number, boolean>,
+    nextShowAnswer: Record<number, boolean>,
+    nextCompleted: boolean
+  ) => {
+    saveChapterExerciseProgress(
+      user?.email,
+      normalized,
+      chapterKey,
+      {
+        currentIdx: nextIdx,
+        userSelections: nextSelections,
+        submittedMap: nextSubmitted,
+        showAnswerMap: nextShowAnswer,
+        isCompleted: nextCompleted,
+        updatedAt: Date.now(),
+      },
+      user
+    );
+  };
+
   // Hydrate saved state for this chapter exercise on mount / chapterKey / user change
   useEffect(() => {
-    isHydratedRef.current = false;
-    const saved = getChapterExerciseProgress(user?.email, normalized, chapterKey);
+    const saved =
+      getChapterExerciseProgress(user?.email, normalized, chapterKey) ||
+      getChapterExerciseProgress(null, normalized, chapterKey);
     if (saved) {
       setCurrentIdx(typeof saved.currentIdx === "number" ? saved.currentIdx : 0);
       setUserSelections(saved.userSelections || { 0: null, 1: null, 2: null });
@@ -116,7 +140,9 @@ export function DocxChapterExerciseView({
   // Listen for cloud sync completion
   useEffect(() => {
     const handleCloudSynced = () => {
-      const saved = getChapterExerciseProgress(user?.email, normalized, chapterKey);
+      const saved =
+        getChapterExerciseProgress(user?.email, normalized, chapterKey) ||
+        getChapterExerciseProgress(null, normalized, chapterKey);
       if (saved) {
         setCurrentIdx(typeof saved.currentIdx === "number" ? saved.currentIdx : 0);
         setUserSelections(saved.userSelections || { 0: null, 1: null, 2: null });
@@ -128,32 +154,6 @@ export function DocxChapterExerciseView({
     window.addEventListener("devacademy-cloud-synced", handleCloudSynced);
     return () => window.removeEventListener("devacademy-cloud-synced", handleCloudSynced);
   }, [user?.email, normalized, chapterKey]);
-
-  // Save state whenever user interacts
-  useEffect(() => {
-    if (!isHydratedRef.current) return;
-    const hasInteraction =
-      currentIdx > 0 ||
-      isCompleted ||
-      Object.values(userSelections).some((v) => v !== null) ||
-      Object.values(submittedMap).some(Boolean);
-    if (!hasInteraction) return;
-
-    saveChapterExerciseProgress(
-      user?.email,
-      normalized,
-      chapterKey,
-      {
-        currentIdx,
-        userSelections,
-        submittedMap,
-        showAnswerMap,
-        isCompleted,
-        updatedAt: Date.now(),
-      },
-      user
-    );
-  }, [currentIdx, userSelections, submittedMap, showAnswerMap, isCompleted, user, normalized, chapterKey]);
 
   const currentQ = questions[currentIdx] || questions[0];
   const selectedOption = userSelections[currentIdx] ?? null;
@@ -176,12 +176,16 @@ export function DocxChapterExerciseView({
 
   const handleSelectOption = (idx: number) => {
     if (isSubmitted) return;
-    setUserSelections((prev) => ({ ...prev, [currentIdx]: idx }));
+    const nextSelections = { ...userSelections, [currentIdx]: idx };
+    setUserSelections(nextSelections);
+    persistExercise(currentIdx, nextSelections, submittedMap, showAnswerMap, isCompleted);
   };
 
   const handleSubmitCurrent = () => {
     if (selectedOption === null) return;
-    setSubmittedMap((prev) => ({ ...prev, [currentIdx]: true }));
+    const nextSubmitted = { ...submittedMap, [currentIdx]: true };
+    setSubmittedMap(nextSubmitted);
+    persistExercise(currentIdx, userSelections, nextSubmitted, showAnswerMap, isCompleted);
     markChapterAsCompleted(user?.email, normalized, chapterKey, user);
     if (user) {
       fetch("/api/progress/chapter", {
@@ -193,9 +197,13 @@ export function DocxChapterExerciseView({
   };
 
   const handleResetCurrent = () => {
-    setUserSelections((prev) => ({ ...prev, [currentIdx]: null }));
-    setSubmittedMap((prev) => ({ ...prev, [currentIdx]: false }));
-    setShowAnswerMap((prev) => ({ ...prev, [currentIdx]: false }));
+    const nextSelections = { ...userSelections, [currentIdx]: null };
+    const nextSubmitted = { ...submittedMap, [currentIdx]: false };
+    const nextShowAnswer = { ...showAnswerMap, [currentIdx]: false };
+    setUserSelections(nextSelections);
+    setSubmittedMap(nextSubmitted);
+    setShowAnswerMap(nextShowAnswer);
+    persistExercise(currentIdx, nextSelections, nextSubmitted, nextShowAnswer, isCompleted);
   };
 
   const handleResetAll = () => {
@@ -204,27 +212,23 @@ export function DocxChapterExerciseView({
     setSubmittedMap({ 0: false, 1: false, 2: false });
     setShowAnswerMap({ 0: false, 1: false, 2: false });
     setIsCompleted(false);
-    saveChapterExerciseProgress(
-      user?.email,
-      normalized,
-      chapterKey,
-      {
-        currentIdx: 0,
-        userSelections: { 0: null, 1: null, 2: null },
-        submittedMap: { 0: false, 1: false, 2: false },
-        showAnswerMap: { 0: false, 1: false, 2: false },
-        isCompleted: false,
-        updatedAt: Date.now(),
-      },
-      user
+    persistExercise(
+      0,
+      { 0: null, 1: null, 2: null },
+      { 0: false, 1: false, 2: false },
+      { 0: false, 1: false, 2: false },
+      false
     );
   };
 
   const handleNextQuestion = () => {
     if (currentIdx < 2) {
-      setCurrentIdx((prev) => prev + 1);
+      const nextIdx = currentIdx + 1;
+      setCurrentIdx(nextIdx);
+      persistExercise(nextIdx, userSelections, submittedMap, showAnswerMap, isCompleted);
     } else {
       setIsCompleted(true);
+      persistExercise(currentIdx, userSelections, submittedMap, showAnswerMap, true);
     }
   };
 
@@ -316,6 +320,7 @@ export function DocxChapterExerciseView({
               onClick={() => {
                 if (!isCompleted) {
                   setCurrentIdx(idx);
+                  persistExercise(idx, userSelections, submittedMap, showAnswerMap, isCompleted);
                 }
               }}
               style={{

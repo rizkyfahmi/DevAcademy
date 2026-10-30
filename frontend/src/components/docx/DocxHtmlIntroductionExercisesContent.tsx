@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Check, X } from "lucide-react";
 import { DocxBookmarkButton } from "./DocxBookmarkButton";
 import { useAuthModal } from "@/context/AuthModalContext";
+import { useAuth } from "@/context/AuthContext";
+import { getHomeQuizProgress, saveHomeQuizProgress } from "@/lib/user-progress-store";
 
 interface DocxHtmlIntroductionExercisesContentProps {
   onGoPrevious: () => void;
@@ -15,9 +17,23 @@ export function DocxHtmlIntroductionExercisesContent({
   onGoNext,
 }: DocxHtmlIntroductionExercisesContentProps) {
   const { openSignIn } = useAuthModal();
+  const { user } = useAuth();
 
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [submitted, setSubmitted] = useState(false);
+
+  useEffect(() => {
+    const saved =
+      getHomeQuizProgress(user?.email, "HTML_INTRO_EX") ||
+      getHomeQuizProgress(null, "HTML_INTRO_EX");
+    if (saved && saved.selectedAnswer !== null && saved.selectedAnswer !== undefined) {
+      const parsed = Number(saved.selectedAnswer);
+      if (!Number.isNaN(parsed)) {
+        setSelectedOption(parsed);
+      }
+      setSubmitted(!!saved.submitted);
+    }
+  }, [user?.email]);
 
   const options = [
     "Hot Typing Markup Language",
@@ -30,6 +46,7 @@ export function DocxHtmlIntroductionExercisesContent({
   const handleSubmit = () => {
     if (selectedOption === null) return;
     setSubmitted(true);
+    saveHomeQuizProgress(user?.email, "HTML_INTRO_EX", String(selectedOption), true, user);
   };
 
   const isCorrect = submitted && selectedOption === correctIndex;
@@ -137,6 +154,7 @@ export function DocxHtmlIntroductionExercisesContent({
                 onClick={() => {
                   setSelectedOption(idx);
                   setSubmitted(false);
+                  saveHomeQuizProgress(user?.email, "HTML_INTRO_EX", String(idx), false, user);
                 }}
                 style={{
                   background: isSelected ? "#2d3e4e" : "#3b4854",

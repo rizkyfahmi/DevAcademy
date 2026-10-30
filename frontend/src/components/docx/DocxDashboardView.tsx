@@ -73,7 +73,13 @@ export function DocxDashboardView({
     if (initialChapter) {
       const chap = initialChapter === "exercises" ? "introduction" : initialChapter;
       setActiveChapterSlug(chap);
-      setActiveSubSlug(initialSubChapter || (initialChapter === "exercises" ? "exercises" : chap));
+      const urlSub =
+        typeof window !== "undefined"
+          ? new URLSearchParams(window.location.search).get("sub")
+          : null;
+      setActiveSubSlug(
+        urlSub || initialSubChapter || (initialChapter === "exercises" ? "exercises" : chap)
+      );
       setExpandedChapters((prev) => ({ ...prev, [chap]: true }));
     }
   }, [initialChapter, initialSubChapter]);

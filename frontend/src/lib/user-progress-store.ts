@@ -153,12 +153,16 @@ export function mergeUserStates(
     const a = older.fullExercises?.[slug];
     const b = newer.fullExercises?.[slug];
     if (a && b) {
+      const bIsNewer = (b.updatedAt || 0) >= (a.updatedAt || 0);
+      const primary = bIsNewer ? b : a;
+      const secondary = bIsNewer ? a : b;
       result.fullExercises[slug] = {
-        currentNum: b.currentNum || a.currentNum || 1,
-        userAnswers: { ...(a.userAnswers || {}), ...(b.userAnswers || {}) },
-        submittedMap: { ...(a.submittedMap || {}), ...(b.submittedMap || {}) },
-        selectedOptionMap: { ...(a.selectedOptionMap || {}), ...(b.selectedOptionMap || {}) },
-        selectedChapterSlug: b.selectedChapterSlug || a.selectedChapterSlug || "all",
+        currentNum: primary.currentNum || secondary.currentNum || 1,
+        userAnswers: { ...(secondary.userAnswers || {}), ...(primary.userAnswers || {}) },
+        submittedMap: { ...(secondary.submittedMap || {}), ...(primary.submittedMap || {}) },
+        selectedOptionMap: { ...(secondary.selectedOptionMap || {}), ...(primary.selectedOptionMap || {}) },
+        selectedChapterSlug: primary.selectedChapterSlug || secondary.selectedChapterSlug || "all",
+        updatedAt: Math.max(a.updatedAt || 0, b.updatedAt || 0),
       };
     } else {
       result.fullExercises[slug] = (b || a)!;
@@ -249,7 +253,7 @@ function scheduleCloudPush(
   if (syncTimeout) clearTimeout(syncTimeout);
   syncTimeout = setTimeout(() => {
     pushStateToTiDBCloud(email, state, userMeta, overwrite).catch(() => {});
-  }, 350);
+  }, 80);
 }
 
 export async function pushStateToTiDBCloud(
@@ -263,6 +267,7 @@ export async function pushStateToTiDBCloud(
     await fetch(`${API_BASE_URL}/api/sync`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      keepalive: true,
       body: JSON.stringify({
         email: email.toLowerCase().trim(),
         userId: userMeta?.id,
