@@ -9,13 +9,17 @@ import {
 
 
 function getAppOrigin(req: NextRequest): string {
+  if (
+    process.env.NEXT_PUBLIC_APP_URL &&
+    !process.env.NEXT_PUBLIC_APP_URL.includes("localhost") &&
+    !process.env.NEXT_PUBLIC_APP_URL.includes("127.0.0.1")
+  ) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  }
   const forwardedHost = req.headers.get("x-forwarded-host") || req.headers.get("host");
   if (forwardedHost && !forwardedHost.includes("localhost") && !forwardedHost.includes("127.0.0.1")) {
     const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
     return `${forwardedProto}://${forwardedHost}`;
-  }
-  if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes("localhost")) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   }
   return req.nextUrl.origin;
 }
@@ -240,4 +244,5 @@ export async function GET(
     );
   }
 }
+
 

@@ -2,13 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 
 function getAppOrigin(req: NextRequest): string {
+  if (
+    process.env.NEXT_PUBLIC_APP_URL &&
+    !process.env.NEXT_PUBLIC_APP_URL.includes("localhost") &&
+    !process.env.NEXT_PUBLIC_APP_URL.includes("127.0.0.1")
+  ) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
+  }
   const forwardedHost = req.headers.get("x-forwarded-host") || req.headers.get("host");
   if (forwardedHost && !forwardedHost.includes("localhost") && !forwardedHost.includes("127.0.0.1")) {
     const forwardedProto = req.headers.get("x-forwarded-proto") || "https";
     return `${forwardedProto}://${forwardedHost}`;
-  }
-  if (process.env.NEXT_PUBLIC_APP_URL && !process.env.NEXT_PUBLIC_APP_URL.includes("localhost")) {
-    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "");
   }
   return req.nextUrl.origin;
 }
@@ -39,25 +43,6 @@ export async function GET(
     )}&state=${state}&prompt=select_account`;
 
     const res = NextResponse.redirect(googleAuthUrl);
-    res.cookies.set("oauth_state", state, { httpOnly: true, maxAge: 600, path: "/" });
-    return res;
-  }
-
-  if (provider === "facebook") {
-    const appId = process.env.FACEBOOK_APP_ID;
-    if (!appId) {
-      return NextResponse.redirect(
-        `${origin}/login?error=oauth_unconfigured&provider=Facebook`
-      );
-    }
-    const redirectUri = `${origin}/api/auth/callback/facebook`;
-    const facebookAuthUrl = `https://www.facebook.com/v18.0/dialog/oauth?client_id=${encodeURIComponent(
-      appId
-    )}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&state=${state}&scope=email,public_profile`;
-
-    const res = NextResponse.redirect(facebookAuthUrl);
     res.cookies.set("oauth_state", state, { httpOnly: true, maxAge: 600, path: "/" });
     return res;
   }
